@@ -22,7 +22,7 @@ import (
 )
 
 // NewServer creates a new server.
-func NewServer(addr string) *http.Server {
+func NewServer(addr string, config *Config) *http.Server {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -45,7 +45,7 @@ func NewServer(addr string) *http.Server {
 			return
 		}
 
-		coll, err := OpenCollection(ctx)
+		coll, err := OpenCollection(ctx, config.Store)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintf(w, "failed to open collection: %s", err)
@@ -73,10 +73,10 @@ func NewServer(addr string) *http.Server {
 	mux.HandleFunc("/tasks", func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		coll, err := OpenCollection(ctx)
+		coll, err := OpenCollection(ctx, config.Store)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint(w, err)
+			fmt.Fprintf(w, "failed to open collection: %s", err)
 			return
 		}
 
@@ -90,7 +90,7 @@ func NewServer(addr string) *http.Server {
 				break
 			} else if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				fmt.Fprint(w, err)
+				fmt.Fprintf(w, "failed to store the next: %s", err)
 				return
 			} else {
 				fmt.Fprintf(w, "- %#v\n", t)

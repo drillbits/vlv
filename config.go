@@ -20,7 +20,14 @@ import (
 
 // Config represents a configuration for vlv.
 type Config struct {
-	Address string `toml:"addr"`
+	Address string       `toml:"addr"`
+	Store   *StoreConfig `toml:"store"`
+}
+
+// StoreConfig represents a configuration for store.
+type StoreConfig struct {
+	URL       string `toml:"url"`
+	Localfile string `toml:"localfile"`
 }
 
 // LoadConfig loads a file as Config.
@@ -32,6 +39,14 @@ func LoadConfig(path string) (*Config, error) {
 
 	if config.Address == "" {
 		config.Address = ":5151"
+	}
+
+	if config.Store == nil {
+		config.Store = &StoreConfig{}
+	}
+
+	if config.Store.URL == "" {
+		config.Store.URL = "mem://collection/Filename"
 	}
 
 	return &config, nil

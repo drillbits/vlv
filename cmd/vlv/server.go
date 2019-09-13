@@ -70,7 +70,7 @@ func (cmd *runCmd) Execute(ctx context.Context, flagset *flag.FlagSet, _ ...inte
 	go d.Start(ctx)
 
 	addr := cmd.config.Address
-	srv := vlv.NewServer(addr)
+	srv := vlv.NewServer(addr, &cmd.config)
 	log.Printf("starting to listen on tcp %s", addr)
 	err = srv.ListenAndServe()
 	if err != nil {
