@@ -20,7 +20,6 @@ import (
 	"os"
 
 	"github.com/google/subcommands"
-	_ "gocloud.dev/docstore/memdocstore"
 )
 
 func main() {

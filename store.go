@@ -18,6 +18,8 @@ import (
 	"context"
 
 	"gocloud.dev/docstore"
+	// in-memory driver
+	_ "gocloud.dev/docstore/memdocstore"
 )
 
 // OpenCollection opens the collection of tasks.
