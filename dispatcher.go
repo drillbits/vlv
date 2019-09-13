@@ -27,10 +27,10 @@ import (
 
 // Task represents a task to upload.
 type Task struct {
-	Filename    string   `json:"filename"`
-	Description string   `json:"description"`
-	Parents     []string `json:"parents"`
-	MimeType    string   `json:"mimeType"`
+	Filename    string   `json:"filename" docstore:"filename"`
+	Description string   `json:"description" docstore:"description"`
+	Parents     []string `json:"parents" docstore:"parents"`
+	MimeType    string   `json:"mimeType" docstore:"mimeType"`
 
 	DocstoreRevision interface{}
 }

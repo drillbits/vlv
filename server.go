@@ -40,15 +40,13 @@ func NewServer(addr string, coll *docstore.Collection) *http.Server {
 		}
 
 		var t Task
-		err := json.NewDecoder(r.Body).Decode(&t)
-		if err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintf(w, "failed to decode: %s", err)
 			return
 		}
 
-		err = coll.Create(ctx, &t)
-		if err != nil {
+		if err := coll.Create(ctx, &t); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintf(w, "failed to create: %s", err)
 			return
@@ -73,8 +71,7 @@ func NewServer(addr string, coll *docstore.Collection) *http.Server {
 
 		for {
 			var t Task
-			err := iter.Next(ctx, &t)
-			if err == io.EOF {
+			if err := iter.Next(ctx, &t); err == io.EOF {
 				break
 			} else if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)

@@ -80,25 +80,26 @@ func (cmd *runCmd) Execute(ctx context.Context, flagset *flag.FlagSet, _ ...inte
 	}
 	defer coll.Close()
 
-	addr := cmd.config.Address
-	srv := vlv.NewServer(addr, coll)
+	srv := vlv.NewServer(cmd.config.Address, coll)
 
 	go func() {
-		log.Printf("starting to listen on tcp %s", addr)
-		if err = srv.ListenAndServe(); err != http.ErrServerClosed {
-			// Error starting or closing listener:
-			log.Fatalf("failed to listen and serve: %s", err)
+		log.Printf("starting to listen on tcp %s", srv.Addr)
+		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+			// error starting or closing listener:
+			log.Printf("server closed: %s", err)
 		}
 	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGTERM, os.Interrupt)
-	log.Printf("SIGNAL %d received, then shutting down...", <-quit)
+	log.Printf("SIGNAL %d received, shutting down...", <-quit)
+
 	if err := srv.Shutdown(ctx); err != nil {
-		// Error from closing listeners, or context timeout:
-		log.Printf("failed to gracefully shutdown: %s", err)
+		// error from closing listeners:
+		log.Printf("Failed to gracefully shutdown: %s", err)
+		return subcommands.ExitFailure
 	}
-	log.Println("shutdown server")
+	log.Println("server shutdown")
 
 	return subcommands.ExitSuccess
 }
