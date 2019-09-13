@@ -16,28 +16,41 @@ package vlv
 
 import (
 	"context"
+	"log"
+	"net/url"
 	"strings"
 
 	"gocloud.dev/docstore"
 	// in-memory driver
-	_ "gocloud.dev/docstore/memdocstore"
+	"gocloud.dev/docstore/memdocstore"
 )
 
 // OpenCollection opens the collection of tasks.
 func OpenCollection(ctx context.Context, config *StoreConfig) (*docstore.Collection, error) {
 	urlstr := config.URL
 
-	if strings.HasPrefix(urlstr, "mem") {
+	u, err := url.Parse(urlstr)
+	if err != nil {
+		return nil, err
+	}
+
+	if !strings.HasPrefix(u.Scheme, memdocstore.Scheme) {
+		log.Printf("open collection: %s", urlstr)
 		coll, err := docstore.OpenCollection(ctx, urlstr)
 		if err != nil {
 			return nil, err
 		}
-		return coll, err
+		return coll, nil
 	}
 
-	coll, err := docstore.OpenCollection(ctx, urlstr)
+	ss := strings.Split(u.Path, "/")
+	keyField := ss[len(ss)-1]
+	log.Printf("open in-memory collection: keyField: %s, localfile: %s", keyField, config.Localfile)
+	coll, err := memdocstore.OpenCollection(keyField, &memdocstore.Options{
+		Filename: config.Localfile,
+	})
 	if err != nil {
 		return nil, err
 	}
-	return coll, nil
+	return coll, err
 }
