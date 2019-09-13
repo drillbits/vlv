@@ -19,10 +19,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"gocloud.dev/docstore"
 )
 
 // NewServer creates a new server.
-func NewServer(addr string, config *Config) *http.Server {
+func NewServer(addr string, coll *docstore.Collection) *http.Server {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -42,13 +44,6 @@ func NewServer(addr string, config *Config) *http.Server {
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintf(w, "failed to decode: %s", err)
-			return
-		}
-
-		coll, err := OpenCollection(ctx, config.Store)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "failed to open collection: %s", err)
 			return
 		}
 
@@ -72,13 +67,6 @@ func NewServer(addr string, config *Config) *http.Server {
 
 	mux.HandleFunc("/tasks", func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-
-		coll, err := OpenCollection(ctx, config.Store)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "failed to open collection: %s", err)
-			return
-		}
 
 		iter := coll.Query().Get(ctx)
 		defer iter.Stop()
