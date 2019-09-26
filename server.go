@@ -39,14 +39,14 @@ func NewServer(addr string, coll *docstore.Collection) *http.Server {
 			return
 		}
 
-		var t Task
-		if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
+		t, err := TaskFromRequest(r)
+		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintf(w, "failed to decode: %s", err)
 			return
 		}
 
-		if err := coll.Create(ctx, &t); err != nil {
+		if err := coll.Create(ctx, t); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintf(w, "failed to create: %s", err)
 			return
@@ -78,7 +78,7 @@ func NewServer(addr string, coll *docstore.Collection) *http.Server {
 				fmt.Fprintf(w, "failed to store the next: %s", err)
 				return
 			} else {
-				fmt.Fprintf(w, "- %#v\n", t)
+				fmt.Fprintf(w, "- %s: %#v\n", t.CreatedAt(), t)
 			}
 		}
 	})

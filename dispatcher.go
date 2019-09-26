@@ -16,25 +16,47 @@ package vlv
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"log"
 	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
+	"gocloud.dev/docstore"
 	"google.golang.org/api/drive/v3"
 )
 
 // Task represents a task to upload.
 type Task struct {
-	Filename    string   `json:"filename" docstore:"filename"`
-	Description string   `json:"description" docstore:"description"`
-	MimeType    string   `json:"mimeType" docstore:"mimeType"`
+	Filename    string `json:"filename" docstore:"filename"`
+	Description string `json:"description" docstore:"description"`
 	// TODO: docstore can not open data with array field.
 	// Parents     []string `json:"parents" docstore:"parents"`
 	Parent     string `json:"parent" docstore:"parent"`
+	MimeType   string `json:"mimeType" docstore:"mimeType"`
+	CreateTime int64  `json:"createTime" docstore:"createTime"`
 
 	DocstoreRevision interface{}
+}
+
+// TaskFromRequest creates a new Task from http.Request.
+func TaskFromRequest(r *http.Request) (*Task, error) {
+	var t Task
+	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
+		return nil, err
+	}
+	defer r.Body.Close()
+
+	t.CreateTime = time.Now().UnixNano()
+	return &t, nil
+}
+
+// CreatedAt returns when the task was created.
+func (t *Task) CreatedAt() time.Time {
+	return time.Unix(0, t.CreateTime)
 }
 
 // Do uploads a file of the task.
@@ -73,20 +95,49 @@ func (t *Task) Do(client *http.Client) error {
 // Dispatcher represents a dispatcher.
 type Dispatcher struct {
 	client *http.Client
+	coll   *docstore.Collection
 }
 
 // NewDispatcher creates a new dispatcher.
-func NewDispatcher(client *http.Client) *Dispatcher {
+func NewDispatcher(client *http.Client, coll *docstore.Collection) *Dispatcher {
 	d := &Dispatcher{
 		client: client,
+		coll:   coll,
 	}
-
 	return d
 }
 
 // Start starts to dispatch.
 func (d *Dispatcher) Start(ctx context.Context) {
 	for {
-		// TODO: retrieve entries and upload.
+		// retrieve entries and upload.
+		iter := d.coll.Query().OrderBy("createTime", "asc").Get(ctx)
+		defer iter.Stop()
+
+		for {
+			var t Task
+			if err := iter.Next(ctx, &t); err == io.EOF {
+				break
+			} else if err != nil {
+				// TODO: error
+				log.Printf("[ERROR] failed to iter collection: %s", err)
+				return
+			} else {
+				log.Printf("- %s: %#v\n", t.CreatedAt(), t)
+				err = t.Do(d.client)
+				if err != nil {
+					// TODO: error
+					log.Printf("[ERROR] failed to execute task: %s", err)
+					// TODO: retry?
+				}
+				// TODO: delete if task was failure
+				if err = d.coll.Delete(ctx, &t); err != nil {
+					// TODO: error
+					log.Printf("[ERROR] failed to delete task: %s", err)
+				}
+			}
+		}
+		// TODO: hard-coded interval
+		time.Sleep(1 * time.Second)
 	}
 }

@@ -70,15 +70,15 @@ func (cmd *runCmd) Execute(ctx context.Context, flagset *flag.FlagSet, _ ...inte
 		return subcommands.ExitFailure
 	}
 
-	d := vlv.NewDispatcher(client)
-	go d.Start(ctx)
-
 	coll, err := vlv.OpenCollection(ctx, cmd.config.Store)
 	if err != nil {
 		log.Printf("failed to open collection: %s", err)
 		return subcommands.ExitFailure
 	}
 	defer coll.Close()
+
+	d := vlv.NewDispatcher(client, coll)
+	go d.Start(ctx)
 
 	srv := vlv.NewServer(cmd.config.Address, coll)
 

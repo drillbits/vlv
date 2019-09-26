@@ -1,0 +1,4 @@
+addr = ":5151"
+
+[store]
+localfile = "/var/lib/vlv/data"
