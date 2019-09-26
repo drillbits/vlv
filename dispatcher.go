@@ -29,8 +29,10 @@ import (
 type Task struct {
 	Filename    string   `json:"filename" docstore:"filename"`
 	Description string   `json:"description" docstore:"description"`
-	Parents     []string `json:"parents" docstore:"parents"`
 	MimeType    string   `json:"mimeType" docstore:"mimeType"`
+	// TODO: docstore can not open data with array field.
+	// Parents     []string `json:"parents" docstore:"parents"`
+	Parent     string `json:"parent" docstore:"parent"`
 
 	DocstoreRevision interface{}
 }
@@ -54,7 +56,7 @@ func (t *Task) Do(client *http.Client) error {
 	dst := &drive.File{
 		Name:        filename,
 		Description: t.Description,
-		Parents:     t.Parents,
+		Parents:     []string{t.Parent},
 		MimeType:    t.MimeType,
 	}
 
