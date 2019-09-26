@@ -77,7 +77,7 @@ func (cmd *runCmd) Execute(ctx context.Context, flagset *flag.FlagSet, _ ...inte
 	}
 	defer coll.Close()
 
-	d := vlv.NewDispatcher(client, coll)
+	d := vlv.NewDispatcher(client, coll, cmd.config.Rate, cmd.config.Capacity)
 	go d.Start(ctx)
 
 	srv := vlv.NewServer(cmd.config.Address, coll)

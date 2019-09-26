@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/juju/ratelimit"
 	"gocloud.dev/docstore"
 	"google.golang.org/api/drive/v3"
 )
@@ -60,13 +61,17 @@ func (t *Task) CreatedAt() time.Time {
 }
 
 // Do uploads a file of the task.
-func (t *Task) Do(client *http.Client) error {
+func (t *Task) Do(client *http.Client, rate float64, capacity int64) error {
 	service, err := drive.New(client)
 	if err != nil {
 		return err
 	}
 
 	f, err := os.Open(t.Filename)
+	if err != nil {
+		return err
+	}
+	fi, err := f.Stat()
 	if err != nil {
 		return err
 	}
@@ -83,7 +88,11 @@ func (t *Task) Do(client *http.Client) error {
 	}
 
 	log.Printf("uploading %s\n", filename)
-	res, err := service.Files.Create(dst).Media(f).Do()
+
+	b := ratelimit.NewBucketWithRate(rate, capacity)
+	res, err := service.Files.Create(dst).Media(ratelimit.Reader(f, b)).ProgressUpdater(func(current, total int64) {
+		log.Printf("progress: %.2f%%, %d/%d bytes\n", float64(current)/float64(fi.Size())*100.0, current, fi.Size())
+	}).Do()
 	if err != nil {
 		return err
 	}
@@ -96,13 +105,18 @@ func (t *Task) Do(client *http.Client) error {
 type Dispatcher struct {
 	client *http.Client
 	coll   *docstore.Collection
+
+	rate     float64
+	capacity int64
 }
 
 // NewDispatcher creates a new dispatcher.
-func NewDispatcher(client *http.Client, coll *docstore.Collection) *Dispatcher {
+func NewDispatcher(client *http.Client, coll *docstore.Collection, rate float64, capacity int64) *Dispatcher {
 	d := &Dispatcher{
-		client: client,
-		coll:   coll,
+		client:   client,
+		coll:     coll,
+		rate:     rate,
+		capacity: capacity,
 	}
 	return d
 }
@@ -124,7 +138,7 @@ func (d *Dispatcher) Start(ctx context.Context) {
 				return
 			} else {
 				log.Printf("- %s: %#v\n", t.CreatedAt(), t)
-				err = t.Do(d.client)
+				err = t.Do(d.client, d.rate, d.capacity)
 				if err != nil {
 					// TODO: error
 					log.Printf("[ERROR] failed to execute task: %s", err)

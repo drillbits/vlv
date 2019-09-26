@@ -22,6 +22,12 @@ import (
 type Config struct {
 	Address string       `toml:"addr"`
 	Store   *StoreConfig `toml:"store"`
+
+	// Rate represents a byte for token bucket rate per second.
+	Rate float64 `toml:"rate"`
+
+	// Capacity represents a byte for token bucket capacity.
+	Capacity int64 `toml:"capacity"`
 }
 
 // StoreConfig represents a configuration for store.
@@ -47,6 +53,14 @@ func LoadConfig(path string) (*Config, error) {
 
 	if config.Store.URL == "" {
 		config.Store.URL = "mem://collection/Filename"
+	}
+
+	if config.Rate == 0 {
+		config.Rate = 512 * 1024
+	}
+
+	if config.Capacity == 0 {
+		config.Capacity = 512 * 1024
 	}
 
 	return &config, nil
