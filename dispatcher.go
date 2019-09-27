@@ -16,6 +16,7 @@ package vlv
 
 import (
 	"context"
+	"encoding/gob"
 	"encoding/json"
 	"io"
 	"log"
@@ -30,15 +31,18 @@ import (
 	"google.golang.org/api/drive/v3"
 )
 
+func init() {
+	// for array field of docstore struct
+	gob.Register([]interface{}{})
+}
+
 // Task represents a task to upload.
 type Task struct {
-	Filename    string `json:"filename" docstore:"filename"`
-	Description string `json:"description" docstore:"description"`
-	// TODO: docstore can not open data with array field.
-	// Parents     []string `json:"parents" docstore:"parents"`
-	Parent     string `json:"parent" docstore:"parent"`
-	MimeType   string `json:"mimeType" docstore:"mimeType"`
-	CreateTime int64  `json:"createTime" docstore:"createTime"`
+	Filename    string   `json:"filename" docstore:"filename"`
+	Description string   `json:"description" docstore:"description"`
+	Parents     []string `json:"parents" docstore:"parents"`
+	MimeType    string   `json:"mimeType" docstore:"mimeType"`
+	CreateTime  int64    `json:"createTime" docstore:"createTime"`
 
 	DocstoreRevision interface{}
 }
@@ -83,7 +87,7 @@ func (t *Task) Do(client *http.Client, rate float64, capacity int64) error {
 	dst := &drive.File{
 		Name:        filename,
 		Description: t.Description,
-		Parents:     []string{t.Parent},
+		Parents:     t.Parents,
 		MimeType:    t.MimeType,
 	}
 
