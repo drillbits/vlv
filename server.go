@@ -69,6 +69,7 @@ func NewServer(addr string, coll *docstore.Collection) *http.Server {
 		iter := coll.Query().Get(ctx)
 		defer iter.Stop()
 
+		tasks := make([]*Task, 0)
 		for {
 			var t Task
 			if err := iter.Next(ctx, &t); err == io.EOF {
@@ -78,8 +79,20 @@ func NewServer(addr string, coll *docstore.Collection) *http.Server {
 				fmt.Fprintf(w, "failed to store the next: %s", err)
 				return
 			} else {
-				fmt.Fprintf(w, "- %s: %#v\n", t.CreatedAt(), t)
+				tasks = append(tasks, &t)
 			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		err := json.NewEncoder(w).Encode(&struct {
+			Tasks []*Task `json:"tasks"`
+		}{
+			Tasks: tasks,
+		})
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Header().Set("Content-Type", "plain/text")
+			fmt.Fprintf(w, "failed to encode tasks: %s", err)
 		}
 	})
 
