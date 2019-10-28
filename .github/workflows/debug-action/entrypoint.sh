@@ -8,4 +8,4 @@ go env
 
 go build -o vlv ./cmd/vlv
 
-vlv help
+./vlv help
