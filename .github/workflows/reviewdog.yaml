@@ -8,20 +8,31 @@ jobs:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v1
 
-      - name: Setup Go
+      - name: Debug Go
+        run: |
+          go version
+          go env
+
+      - name: Set up Go
         uses: actions/setup-go@v1
         with:
           go-version: "1.13.3"
 
+      - name: Debug Go
+        run: |
+          go version
+          go env
+
       - name: Download Go modules
         run: go mod vendor
 
-      - name: Run GolangCI-Lint Action by building from repository
-        uses: matoous/golangci-lint-action@v1.0.0
-        with:
-          config: .github/.golangci.yaml
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Run GolangCI-Lint Action by building from repository
+      #   uses: matoous/golangci-lint-action@v1.0.0
+      #   with:
+      #     config: .github/.golangci.yaml
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       # - name: Run golangci-lint with reviewdog
       #   uses: docker://reviewdog/action-golangci-lint:v1.0.4
       #   with:
@@ -29,6 +40,6 @@ jobs:
       #     golangci_lint_flags: "-v --config=.github/.golangci.yaml"
       #     tool_name: reporter / lint
       #     level: error
-      #   env:
-      #     GO111MODULE: on
-      #     REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Debug action
+        uses: ./debug-action
