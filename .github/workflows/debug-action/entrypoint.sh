@@ -6,4 +6,6 @@ which go
 go version
 go env
 
-go build ./cmd/vlv
+go build -o vlv ./cmd/vlv
+
+vlv help
