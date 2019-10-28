@@ -17,7 +17,7 @@ jobs:
         run: go mod vendor
 
       - name: Run GolangCI-Lint Action by building from repository
-        uses: matoous/golangci-lint-action@v1
+        uses: matoous/golangci-lint-action@v1.0.0
         with:
           config: .github/.golangci.yaml
         env:
