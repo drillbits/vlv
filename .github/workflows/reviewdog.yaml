@@ -23,3 +23,6 @@ jobs:
           golangci_lint_flags: "-v --config=.github/.golangci.yaml"
           tool_name: reporter / lint
           level: error
+        env:
+          GO111MODULE: on
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
