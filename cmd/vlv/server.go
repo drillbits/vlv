@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"log"
 	"net/http"
@@ -100,6 +101,8 @@ func (cmd *runCmd) Execute(ctx context.Context, flagset *flag.FlagSet, _ ...inte
 		return subcommands.ExitFailure
 	}
 	log.Println("server shutdown")
+
+	func() error { return errors.New("error") }()
 
 	return subcommands.ExitSuccess
 }
