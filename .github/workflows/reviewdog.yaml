@@ -44,3 +44,5 @@ jobs:
 
       - name: Debug action
         uses: ./.github/workflows/debug-action
+        env:
+          GOROOT: /usr/local/go
