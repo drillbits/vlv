@@ -42,4 +42,4 @@ jobs:
       #     level: error
 
       - name: Debug action
-        uses: ./debug-action
+        uses: .github/workflows/debug-action
