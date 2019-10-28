@@ -34,15 +34,16 @@ jobs:
       #   env:
       #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # - name: Run golangci-lint with reviewdog
-      #   uses: docker://reviewdog/action-golangci-lint:v1.0.4
-      #   with:
-      #     github_token: ${{ secrets.github_token }}
-      #     golangci_lint_flags: "-v --config=.github/.golangci.yaml"
-      #     tool_name: reporter / lint
-      #     level: error
-
-      - name: Debug action
-        uses: ./.github/workflows/debug-action
+      - name: Run golangci-lint with reviewdog
+        uses: docker://reviewdog/action-golangci-lint:v1.0.4
+        with:
+          github_token: ${{ secrets.github_token }}
+          golangci_lint_flags: "-v --config=.github/.golangci.yaml"
+          tool_name: reporter / lint
+          level: error
         env:
           GOROOT: /usr/local/go
+      # - name: Debug action
+      #   uses: ./.github/workflows/debug-action
+      #   env:
+      #     GOROOT: /usr/local/go
