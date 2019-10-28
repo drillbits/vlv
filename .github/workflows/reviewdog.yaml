@@ -16,13 +16,19 @@ jobs:
       - name: Download Go modules
         run: go mod vendor
 
-      - name: Run golangci-lint with reviewdog
-        uses: docker://reviewdog/action-golangci-lint:v1.0.4
+      - name: Run GolangCI-Lint Action by building from repository
+        uses: matoous/golangci-lint-action@v1
         with:
-          github_token: ${{ secrets.github_token }}
-          golangci_lint_flags: "-v --config=.github/.golangci.yaml"
-          tool_name: reporter / lint
-          level: error
+          config: .github/.golangci.yaml
         env:
-          GO111MODULE: on
-          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Run golangci-lint with reviewdog
+      #   uses: docker://reviewdog/action-golangci-lint:v1.0.4
+      #   with:
+      #     github_token: ${{ secrets.github_token }}
+      #     golangci_lint_flags: "-v --config=.github/.golangci.yaml"
+      #     tool_name: reporter / lint
+      #     level: error
+      #   env:
+      #     GO111MODULE: on
+      #     REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
