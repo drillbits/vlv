@@ -1,0 +1,22 @@
+name: reviewdog
+on: [pull_request]
+jobs:
+  lint:
+    name: runner / lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v1
+
+      - name: Setup Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: "1.13.3"
+
+      - name: Run golangci-lint with reviewdog
+        uses: docker://reviewdog/action-golangci-lint:v1.0.4
+        with:
+          github_token: ${{ secrets.github_token }}
+          golangci_lint_flags: "-v --config=.github/.golangci.yaml"
+          tool_name: reporter / lint
+          level: error
