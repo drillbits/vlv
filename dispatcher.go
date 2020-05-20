@@ -112,6 +112,8 @@ type Dispatcher struct {
 
 	rate     float64
 	capacity int64
+
+	shut    bool
 }
 
 // NewDispatcher creates a new dispatcher.
@@ -121,6 +123,7 @@ func NewDispatcher(client *http.Client, coll *docstore.Collection, rate float64,
 		coll:     coll,
 		rate:     rate,
 		capacity: capacity,
+		shut:     false,
 	}
 	return d
 }
