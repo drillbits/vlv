@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/gob"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"mime"
@@ -43,6 +44,9 @@ type Task struct {
 	Parents     []string `json:"parents" docstore:"parents"`
 	MimeType    string   `json:"mimeType" docstore:"mimeType"`
 	CreateTime  int64    `json:"createTime" docstore:"createTime"`
+
+	current int64 `json:"-" docstore:"-"`
+	size    int64 `json:"-" docstore:"-"`
 
 	DocstoreRevision interface{}
 }
@@ -95,7 +99,9 @@ func (t *Task) Do(ctx context.Context, client *http.Client, rate float64, capaci
 
 	b := ratelimit.NewBucketWithRate(rate, capacity)
 	res, err := service.Files.Create(dst).Media(ratelimit.Reader(f, b)).ProgressUpdater(func(current, total int64) {
-		log.Printf("progress: %.2f%%, %d/%d bytes\n", float64(current)/float64(fi.Size())*100.0, current, fi.Size())
+		t.current = current
+		t.size = fi.Size()
+		log.Printf("progress: %.2f%%, %d/%d bytes\n", t.progress(), t.current, t.size)
 	}).Context(ctx).Do()
 	if err != nil {
 		return err
@@ -103,6 +109,24 @@ func (t *Task) Do(ctx context.Context, client *http.Client, rate float64, capaci
 	log.Printf("uploaded https://drive.google.com/file/d/%s/view\n", res.Id)
 
 	return nil
+}
+
+func (t *Task) progress() float64 {
+	return float64(t.current) / float64(t.size) * 100.0
+}
+
+func (t *Task) Status() *TaskStatus {
+	return &TaskStatus{
+		Progress: fmt.Sprintf("%.2f%%", t.progress()),
+		Current:  t.current,
+		Total:    t.size,
+	}
+}
+
+type TaskStatus struct {
+	Progress string `json:"progress"`
+	Current  int64  `json:"current_bytes"`
+	Total    int64  `json:"total_bytes"`
 }
 
 // Dispatcher represents a dispatcher.
@@ -113,6 +137,7 @@ type Dispatcher struct {
 	rate     float64
 	capacity int64
 
+	current *Task
 	shut    bool
 }
 
@@ -161,6 +186,8 @@ func (d *Dispatcher) Start(ctx context.Context) {
 			}
 
 			log.Printf("- %s: %#v\n", t.CreatedAt(), t)
+			d.current = &t
+
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			ret := make(chan error)
@@ -200,10 +227,14 @@ func (d *Dispatcher) Start(ctx context.Context) {
 
 func (d *Dispatcher) Status() *DispatcherStatus {
 	s := new(DispatcherStatus)
+	if d.current != nil {
+		s.TaskStatus = d.current.Status()
+	}
 	s.Shut = d.shut
 	return s
 }
 
 type DispatcherStatus struct {
+	*TaskStatus
 	Shut bool `json:"shut"`
 }
