@@ -162,3 +162,13 @@ func (d *Dispatcher) Start(ctx context.Context) {
 		time.Sleep(1 * time.Second)
 	}
 }
+
+func (d *Dispatcher) Status() *DispatcherStatus {
+	s := new(DispatcherStatus)
+	s.Shut = d.shut
+	return s
+}
+
+type DispatcherStatus struct {
+	Shut bool `json:"shut"`
+}

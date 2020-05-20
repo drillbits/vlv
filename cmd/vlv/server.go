@@ -80,7 +80,7 @@ func (cmd *runCmd) Execute(ctx context.Context, flagset *flag.FlagSet, _ ...inte
 	d := vlv.NewDispatcher(client, coll, cmd.config.Rate, cmd.config.Capacity)
 	go d.Start(ctx)
 
-	srv := vlv.NewServer(cmd.config.Address, coll)
+	srv := vlv.NewServer(cmd.config.Address, d, coll)
 
 	go func() {
 		log.Printf("starting to listen on tcp %s", srv.Addr)
