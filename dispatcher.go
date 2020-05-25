@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/juju/ratelimit"
@@ -210,13 +211,21 @@ func (d *Dispatcher) Start(ctx context.Context) {
 				// TODO: error
 				log.Printf("[ERROR] failed to execute task: %s", err)
 				// TODO: retry?
-				prev = &t
-				continue
-			}
-
-			if err = d.coll.Delete(ctx, &t); err != nil {
-				// TODO: error
-				log.Printf("[ERROR] failed to delete task: %s", err)
+				if strings.Contains(err.Error(), "no such file or directory") {
+					prev = nil
+					if err = d.coll.Delete(ctx, &t); err != nil {
+						// TODO: error
+						log.Printf("[ERROR] failed to delete task: %s", err)
+					}
+				} else {
+					prev = &t
+				}
+			} else {
+				prev = nil
+				if err = d.coll.Delete(ctx, &t); err != nil {
+					// TODO: error
+					log.Printf("[ERROR] failed to delete task: %s", err)
+				}
 			}
 		}
 
