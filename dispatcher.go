@@ -118,6 +118,7 @@ func (t *Task) progress() float64 {
 
 func (t *Task) Status() *TaskStatus {
 	return &TaskStatus{
+		Filename: t.Filename,
 		Progress: fmt.Sprintf("%.2f%%", t.progress()),
 		Current:  t.current,
 		Total:    t.size,
@@ -125,6 +126,7 @@ func (t *Task) Status() *TaskStatus {
 }
 
 type TaskStatus struct {
+	Filename string `json:"filename"`
 	Progress string `json:"progress"`
 	Current  int64  `json:"current_bytes"`
 	Total    int64  `json:"total_bytes"`
