@@ -1,0 +1,13 @@
+# run:
+#   modules-download-mode: vendor
+
+linters:
+  disable-all: true
+  enable:
+    - govet
+    - golint
+    - errcheck
+    - staticcheck
+    - gosimple
+    - unused
+    - gofmt
