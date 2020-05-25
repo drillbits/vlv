@@ -18,12 +18,14 @@ import (
 	"context"
 	"encoding/gob"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/juju/ratelimit"
@@ -43,6 +45,9 @@ type Task struct {
 	Parents     []string `json:"parents" docstore:"parents"`
 	MimeType    string   `json:"mimeType" docstore:"mimeType"`
 	CreateTime  int64    `json:"createTime" docstore:"createTime"`
+
+	current int64 `json:"-" docstore:"-"`
+	size    int64 `json:"-" docstore:"-"`
 
 	DocstoreRevision interface{}
 }
@@ -65,7 +70,7 @@ func (t *Task) CreatedAt() time.Time {
 }
 
 // Do uploads a file of the task.
-func (t *Task) Do(client *http.Client, rate float64, capacity int64) error {
+func (t *Task) Do(ctx context.Context, client *http.Client, rate float64, capacity int64) error {
 	service, err := drive.New(client)
 	if err != nil {
 		return err
@@ -95,14 +100,36 @@ func (t *Task) Do(client *http.Client, rate float64, capacity int64) error {
 
 	b := ratelimit.NewBucketWithRate(rate, capacity)
 	res, err := service.Files.Create(dst).Media(ratelimit.Reader(f, b)).ProgressUpdater(func(current, total int64) {
-		log.Printf("progress: %.2f%%, %d/%d bytes\n", float64(current)/float64(fi.Size())*100.0, current, fi.Size())
-	}).Do()
+		t.current = current
+		t.size = fi.Size()
+		log.Printf("progress: %.2f%%, %d/%d bytes\n", t.progress(), t.current, t.size)
+	}).Context(ctx).Do()
 	if err != nil {
 		return err
 	}
 	log.Printf("uploaded https://drive.google.com/file/d/%s/view\n", res.Id)
 
 	return nil
+}
+
+func (t *Task) progress() float64 {
+	return float64(t.current) / float64(t.size) * 100.0
+}
+
+func (t *Task) Status() *TaskStatus {
+	return &TaskStatus{
+		Filename: t.Filename,
+		Progress: fmt.Sprintf("%.2f%%", t.progress()),
+		Current:  t.current,
+		Total:    t.size,
+	}
+}
+
+type TaskStatus struct {
+	Filename string `json:"filename"`
+	Progress string `json:"progress"`
+	Current  int64  `json:"current_bytes"`
+	Total    int64  `json:"total_bytes"`
 }
 
 // Dispatcher represents a dispatcher.
@@ -112,6 +139,9 @@ type Dispatcher struct {
 
 	rate     float64
 	capacity int64
+
+	current *Task
+	shut    bool
 }
 
 // NewDispatcher creates a new dispatcher.
@@ -121,6 +151,7 @@ func NewDispatcher(client *http.Client, coll *docstore.Collection, rate float64,
 		coll:     coll,
 		rate:     rate,
 		capacity: capacity,
+		shut:     false,
 	}
 	return d
 }
@@ -128,34 +159,93 @@ func NewDispatcher(client *http.Client, coll *docstore.Collection, rate float64,
 // Start starts to dispatch.
 func (d *Dispatcher) Start(ctx context.Context) {
 	for {
+		if d.shut {
+			time.Sleep(1 * time.Minute)
+			continue
+		}
+
 		// retrieve entries and upload.
 		iter := d.coll.Query().OrderBy("createTime", "asc").Get(ctx)
 		defer iter.Stop()
 
+		var prev *Task
 		for {
+			if d.shut {
+				time.Sleep(1 * time.Minute)
+				continue
+			}
+
 			var t Task
-			if err := iter.Next(ctx, &t); err == io.EOF {
-				break
-			} else if err != nil {
-				// TODO: error
-				log.Printf("[ERROR] failed to iter collection: %s", err)
-				return
+			if prev != nil {
+				t = *prev
 			} else {
-				log.Printf("- %s: %#v\n", t.CreatedAt(), t)
-				err = t.Do(d.client, d.rate, d.capacity)
-				if err != nil {
+				if err := iter.Next(ctx, &t); err == io.EOF {
+					break
+				} else if err != nil {
 					// TODO: error
-					log.Printf("[ERROR] failed to execute task: %s", err)
-					// TODO: retry?
+					log.Printf("[ERROR] failed to iter collection: %s", err)
+					return
 				}
-				// TODO: delete if task was failure
+			}
+
+			log.Printf("- %s: %#v\n", t.CreatedAt(), t)
+			d.current = &t
+
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			ret := make(chan error)
+			go func() {
+				err := t.Do(ctx, d.client, d.rate, d.capacity)
+				ret <- err
+			}()
+			go func() {
+				for {
+					if d.shut {
+						log.Printf("vlv is shut now")
+						cancel()
+						break
+					}
+				}
+			}()
+
+			err := <-ret
+			if err != nil {
+				// TODO: error
+				log.Printf("[ERROR] failed to execute task: %s", err)
+				// TODO: retry?
+				if strings.Contains(err.Error(), "no such file or directory") {
+					prev = nil
+					if err = d.coll.Delete(ctx, &t); err != nil {
+						// TODO: error
+						log.Printf("[ERROR] failed to delete task: %s", err)
+					}
+				} else {
+					prev = &t
+				}
+			} else {
+				prev = nil
 				if err = d.coll.Delete(ctx, &t); err != nil {
 					// TODO: error
 					log.Printf("[ERROR] failed to delete task: %s", err)
 				}
 			}
 		}
+
 		// TODO: hard-coded interval
 		time.Sleep(1 * time.Second)
 	}
+}
+
+func (d *Dispatcher) Status() *DispatcherStatus {
+	s := new(DispatcherStatus)
+	if d.current != nil {
+		s.TaskStatus = d.current.Status()
+	}
+	s.Shut = d.shut
+	return s
+}
+
+type DispatcherStatus struct {
+	*TaskStatus
+	Shut bool `json:"shut"`
 }

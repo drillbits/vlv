@@ -24,7 +24,7 @@ import (
 )
 
 // NewServer creates a new server.
-func NewServer(addr string, coll *docstore.Collection) *http.Server {
+func NewServer(addr string, d *Dispatcher, coll *docstore.Collection) *http.Server {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -93,6 +93,47 @@ func NewServer(addr string, coll *docstore.Collection) *http.Server {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Header().Set("Content-Type", "plain/text")
 			fmt.Fprintf(w, "failed to encode tasks: %s", err)
+		}
+	})
+
+	mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(d.Status()); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Header().Set("Content-Type", "plain/text")
+			fmt.Fprintf(w, "failed to encode status: %s", err)
+		}
+	})
+
+	mux.HandleFunc("/open", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+
+		d.shut = false
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(d.Status()); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Header().Set("Content-Type", "plain/text")
+			fmt.Fprintf(w, "failed to encode status: %s", err)
+		}
+	})
+
+	mux.HandleFunc("/shut", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+
+		d.shut = true
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(d.Status()); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Header().Set("Content-Type", "plain/text")
+			fmt.Fprintf(w, "failed to encode status: %s", err)
 		}
 	})
 
